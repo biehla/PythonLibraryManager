@@ -43,28 +43,28 @@ class DbManager:
         self.cursor.execute(addBookStatement, bookValues)
         self.connection.commit()
 
-    def searchBooks(self, searchField: SearchField, searchVar) -> ['Book']:
+    def searchBooks(self, searchField: SearchField, searchVar) -> []:
         searchString = None
         category = None
+        searchVar = "%" + searchVar + "%"
 
         match searchField:
             case SearchField.id:
-                searchString = "SELECT * FROM Book WHERE id = ?"
+                searchString = "SELECT * FROM Book WHERE id LIKE ?"
             case SearchField.title:
-                searchString = "SELECT * FROM Book WHERE title = ?"
+                searchString = "SELECT * FROM Book WHERE title LIKE ?"
             case SearchField.author:
-                searchString = "SELECT * FROM Book WHERE author = ?"
+                searchString = "SELECT * FROM Book WHERE author LIKE ?"
             case SearchField.category:
-                searchString = "SELECT * FROM Book WHERE category = ?"
+                searchString = "SELECT * FROM Book WHERE category LIKE ?"
 
         books = self.cursor.execute(searchString, [searchVar]).fetchall()
         return self._convertToBookArray(books)
 
-    def getLibrary(self) -> ["Book"]:
+    def getLibraryAsList(self) -> [[]]:
         getAllQuery = "SELECT * FROM Book"
         books = self.cursor.execute(getAllQuery).fetchall()
-        bookArray = self._convertToBookArray(books)
-        return bookArray
+        return self._convertToArray(books)
 
     def getBookID(self, book: "Book") -> int|None:
         getBookStatement = "SELECT id FROM Book WHERE title = ? AND author = ? AND category = ?"
@@ -76,9 +76,18 @@ class DbManager:
 
     def _convertToBookArray(self, books: [tuple]) -> ["Book"]:
         bookArray = []
-        import Book
+        import Library.Book
         for index, book in enumerate(books):
             if len(book) != 6:
                 continue
-            bookArray.append(Book.Book(book[1], book[2], book[3], quantity=book[5], id=book[0]))
+            bookArray.append(Library.Book.Book(book[1], book[2], book[3], quantity=book[5], id=book[0]))
+        return bookArray
+
+    def _convertToArray(self, books: [tuple]) -> ["Book"]:
+        bookArray = []
+        import Library.Book
+        for index, book in enumerate(books):
+            if len(book) != 6:
+                continue
+            bookArray.append([book[1], book[2], book[3]])
         return bookArray

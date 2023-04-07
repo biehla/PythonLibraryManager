@@ -11,7 +11,7 @@ class Library:
 
     def getBooksFromDB(self):
         self.dbManager = DbManager()
-        self.library = self.dbManager.getLibrary()
+        self.library = self.dbManager.getLibraryAsList()
 
 
 """

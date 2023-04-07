@@ -2,13 +2,20 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Vertical, Horizontal, Grid
 from textual.events import Click
+from textual.reactive import reactive
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Header, Footer, Button, Static, Label, Input
+from textual.widgets import Header, Footer, Button, Static, Label, Input, DataTable
 
-from Library.Library import Library
+from Library.dbManager import DbManager
 from Library.dbManager import SearchField
+from Library.Book import Book
+
 
 searchType: SearchField = None
+db = DbManager()
+libraryArr: [str] = db.getLibraryAsList()
+libraryHeading = ["Title", "Author", "Category", "Quantity"]
+
 
 class SearchBy(Screen):
     def compose(self) -> ComposeResult:
@@ -19,28 +26,46 @@ class SearchBy(Screen):
             yield Button("Category", id="category")
 
 
-
 class Search(Screen):
     BINDINGS = [
         ('b', "goBack", "Go Back")
     ]
 
+    searchString: str = reactive("")
+
+    def __init__(self):
+        super().__init__()
+
     def compose(self) -> ComposeResult:
         yield Header()
-        with Container(classes='container'):
+        with Container(classes='container search'):
             with Horizontal():
                 yield Button("<", id='back')
                 self.input = Input(placeholder="Search Query")
-                self.input.cursor_blink = True
                 yield self.input
+
+            self.table = DataTable()
+            self.rows = iter(libraryArr)
+            self.table.add_columns(*libraryHeading)
+            self.table.add_rows(self.rows)
+            yield self.table
         yield Footer()
 
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
-        self.input.value = ""
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.value != '':
+            self.searchString = event.value
+            self.table.clear()
+            result = db.searchBooks(searchType, self.searchString)
+            print(searchType, self.searchString)
+            self.table.add_rows(result)
+            # self.compose()
+        else:
+            self.table.clear()
+            self.rows = iter(libraryArr)
+            self.table.add_rows(self.rows)
 
-    # def on_event(self, event: events.Event) -> None:
-    #     if type(event) == events.Paste:
-    #         self.input.value =
+
+
 
 
 
@@ -55,19 +80,20 @@ class LibraryApp(App):
     TITLE = "MyLibrary"
     SUB_TITLE = "Your source for all the best books!"
 
+    def __init__(self):
+        super().__init__()
+
     def compose(self) -> ComposeResult:
         yield Header()
         self.install_screen(SearchBy(), name="buttonContainer")
-        self.install_screen(Search(), name='searchContainer')
         self.push_screen('buttonContainer')
         yield Footer()
 
-    # def on_mount(self) -> None:
-
 
     async def action_search(self):
+        self.install_screen(Search(), name='searchContainer')
         # self.pop_screen()
-        self.push_screen('searchContainer')
+        await self.push_screen(Search())
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         buttonID = event.button.id
@@ -84,24 +110,15 @@ class LibraryApp(App):
                 searchType = SearchField.author
                 await self.run_action("search")
             case "back":
-                await self.run_action("goBack")
+                await self.run_action('goBack')
 
-    async def action_goBack(self):
-        self.pop_screen()
-
-    # async def action_searchByAuthor(self):
-    #     self.searchBy.styles.display = "none"
-    #     global searchType
-    #     searchType = SearchField.author
-    #
-    # async def action_searchByCategory(self):
-    #     self.searchBy.styles.display = "none"
-    #     global searchType
-    #     searchType = SearchField.category
+    def action_goBack(self):
+        self.app.pop_screen()
+        self.app.uninstall_screen('searchContainer')
 
 
 if __name__ == '__main__':
-    library = LibraryApp()
-    library.run()
+    libraryArr = LibraryApp()
+    libraryArr.run()
     # main()
 
