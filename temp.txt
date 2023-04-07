@@ -1,0 +1,5 @@
+GetID
+getTitle
+getCategory
+GetQuantity
+GetAvailability

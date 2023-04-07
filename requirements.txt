@@ -1,0 +1,4 @@
+# --pre
+# --extra-index-url https://kivy.org/downloads/simple/
+# kivy[base]
+textual[dev]
