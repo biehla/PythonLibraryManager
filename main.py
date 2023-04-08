@@ -14,16 +14,17 @@ from Library.Book import Book
 searchType: SearchField = None
 db = DbManager()
 libraryArr: [str] = db.getLibraryAsList()
-libraryHeading = ["Title", "Author", "Category", "Quantity"]
+libraryHeading = ["ID Number", "Title", "Author", "Category", "Quantity"]
+bookChoices = []
 
 
 class SearchBy(Screen):
     def compose(self) -> ComposeResult:
         with Container(classes='container'):
             yield Static("Search for book by:", classes="text")
-            yield Button("Title", id="title")
-            yield Button("Author", id="author")
-            yield Button("Category", id="category")
+            yield Button("Title", id="title", variant="primary")
+            yield Button("Author", id="author", variant="primary")
+            yield Button("Category", id="category", variant="primary")
 
 
 class Search(Screen):
@@ -39,16 +40,21 @@ class Search(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(classes='container search'):
-            with Horizontal():
-                yield Button("<", id='back')
+            with Horizontal(classes="top"):
+                yield Button("<", id='back', variant="error")
                 self.input = Input(placeholder="Search Query")
                 yield self.input
 
             self.table = DataTable()
-            self.rows = iter(libraryArr)
+            rows = iter(libraryArr)
             self.table.add_columns(*libraryHeading)
-            self.table.add_rows(self.rows)
+            self.table.add_rows(rows)
+            self.table.zebra_stripes = True
+            self.table.cursor_type = "row"
             yield self.table
+            with Horizontal(classes='bottom'):
+                yield Button("Add to Cart", id='addToCart', variant="primary")
+                yield Button(">>", id='next', variant="success")
         yield Footer()
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -61,19 +67,50 @@ class Search(Screen):
             # self.compose()
         else:
             self.table.clear()
-            self.rows = iter(libraryArr)
-            self.table.add_rows(self.rows)
+            rows = iter(libraryArr)
+            self.table.add_rows(rows)
+
+    async def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == 'addToCart':
+            row = self.table.cursor_row
+            bookID = self.table.get_row_at(row)[0]
+            global bookChoices
+            bookChoices.append(bookID)
+        elif event.button.id == 'next':
+            await self.app.push_screen('checkout')
 
 
 
 
 
+# self.table = DataTable()
+#             rows = iter(libraryArr)
+#             self.table.add_columns(*libraryHeading)
+#             self.table.add_rows(rows)
+#             self.table.zebra_stripes = True
+#             self.table.cursor_type = "row"
+#             yield self.table
+
+class Checkout(Screen):
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Container(classes="container"):
+            yield Button("<", id='back', variant="error")
+            table = DataTable()
+            books = []
+            for el in bookChoices:
+                books.append(db.searchBooks(SearchField.id, el)[0])
+            table.add_columns(*libraryHeading)
+            table.add_rows(books)
+            yield Button("Check Out", variant="success")
+        yield Footer()
 
 class LibraryApp(App):
     """The main application function"""
     BINDINGS = [
         ('f1', 'toggle_dark', 'Toggle Dark Mode'),
-        ('q', 'quit', "Quit")
+        ('q', 'quit', "Quit"),
+        ('r', 'resetCart', "Reset Shopping Cart")
     ]
     CSS_PATH = "interface.css"
 
@@ -86,13 +123,13 @@ class LibraryApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         self.install_screen(SearchBy(), name="buttonContainer")
+        self.install_screen(Checkout(), name='checkout')
+        self.install_screen(Search(), name='searchContainer')
         self.push_screen('buttonContainer')
         yield Footer()
 
 
     async def action_search(self):
-        self.install_screen(Search(), name='searchContainer')
-        # self.pop_screen()
         await self.push_screen(Search())
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -114,7 +151,12 @@ class LibraryApp(App):
 
     def action_goBack(self):
         self.app.pop_screen()
-        self.app.uninstall_screen('searchContainer')
+        self.query_one("searchContainer").searchString = ""
+
+    def action_resetCart(self):
+        global bookChoices
+        bookChoices = []
+        # todo: confirmation
 
 
 if __name__ == '__main__':

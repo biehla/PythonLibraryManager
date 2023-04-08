@@ -59,7 +59,7 @@ class DbManager:
                 searchString = "SELECT * FROM Book WHERE category LIKE ?"
 
         books = self.cursor.execute(searchString, [searchVar]).fetchall()
-        return self._convertToBookArray(books)
+        return self._convertToArray(books)
 
     def getLibraryAsList(self) -> [[]]:
         getAllQuery = "SELECT * FROM Book"
@@ -89,5 +89,5 @@ class DbManager:
         for index, book in enumerate(books):
             if len(book) != 6:
                 continue
-            bookArray.append([book[1], book[2], book[3]])
+            bookArray.append([book[0], book[1], book[2], book[3], book[5]])
         return bookArray
